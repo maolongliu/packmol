@@ -46,11 +46,11 @@ module compute_data
   logical, allocatable :: comptype(:) ! (ntype)
   logical :: init1, move
 
-  ! For linked lists
+  ! For atom in boxes linked lists
   integer, allocatable :: latomnext(:) ! (ntotat)
   integer, allocatable :: latomfirst(:,:,:) !  (0:nbp+1,0:nbp+1,0:nbp+1)
   integer, allocatable :: latomfix(:,:,:) ! (0:nbp+1,0:nbp+1,0:nbp+1)
- 
+
   ! For movebad
   double precision, allocatable :: fmol(:), radiuswork(:) ! (ntotat)
 

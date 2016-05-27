@@ -37,7 +37,7 @@ subroutine initial(n,x)
 
   character(len=200) :: record
 
-  ! Allocate hasfixed array
+  ! Allocate hasfixed and hasfree arrays
 
   allocate(hasfixed(0:nbp+1,0:nbp+1,0:nbp+1))
 
@@ -293,13 +293,14 @@ subroutine initial(n,x)
     nboxes(i) = nb
   end do
 
-  ! Reseting latomfix array
+  ! Reseting latomfix, hasfixed, and hasfree arrays
 
   do i = 0, nbp + 1
     do j = 0, nbp + 1
       do k = 0, nbp + 1
         latomfix(i,j,k) = 0
         hasfixed(i,j,k) = .false.
+        hasfree(i,j,k) = .false.
       end do
     end do
   end do   
@@ -320,20 +321,7 @@ subroutine initial(n,x)
         latomfix(iboxx,iboxy,iboxz) = icart
         ibtype(icart) = iftype
         ibmol(icart) = 1
-        hasfixed(iboxx,  iboxy,  iboxz  ) = .true.
-        hasfixed(iboxx+1,iboxy,  iboxz  ) = .true.
-        hasfixed(iboxx,  iboxy+1,iboxz  ) = .true.
-        hasfixed(iboxx,  iboxy,  iboxz+1) = .true.
-        hasfixed(iboxx+1,iboxy+1,iboxz  ) = .true.
-        hasfixed(iboxx+1,iboxy,  iboxz+1) = .true.
-        hasfixed(iboxx+1,iboxy-1,iboxz  ) = .true.
-        hasfixed(iboxx+1,iboxy,  iboxz-1) = .true.
-        hasfixed(iboxx,  iboxy+1,iboxz+1) = .true.
-        hasfixed(iboxx,  iboxy+1,iboxz-1) = .true.
-        hasfixed(iboxx+1,iboxy+1,iboxz+1) = .true.
-        hasfixed(iboxx+1,iboxy+1,iboxz-1) = .true.
-        hasfixed(iboxx+1,iboxy-1,iboxz+1) = .true.
-        hasfixed(iboxx+1,iboxy-1,iboxz-1) = .true.
+        hasfixed(iboxx,iboxy,iboxz) = .true.
       end do
     end do
   end if
@@ -426,16 +414,29 @@ subroutine initial(n,x)
              hasfixed(iboxx+1,iboxy,  iboxz  ).or.&
              hasfixed(iboxx,  iboxy+1,iboxz  ).or.&
              hasfixed(iboxx,  iboxy,  iboxz+1).or.&
+             hasfixed(iboxx-1,iboxy,  iboxz  ).or.&
+             hasfixed(iboxx,  iboxy-1,iboxz  ).or.&
+             hasfixed(iboxx,  iboxy,  iboxz-1).or.&
              hasfixed(iboxx+1,iboxy+1,iboxz  ).or.&
              hasfixed(iboxx+1,iboxy,  iboxz+1).or.&
              hasfixed(iboxx+1,iboxy-1,iboxz  ).or.&
              hasfixed(iboxx+1,iboxy,  iboxz-1).or.&
              hasfixed(iboxx,  iboxy+1,iboxz+1).or.&
              hasfixed(iboxx,  iboxy+1,iboxz-1).or.&
+             hasfixed(iboxx,  iboxy-1,iboxz+1).or.&
+             hasfixed(iboxx,  iboxy-1,iboxz-1).or.&
+             hasfixed(iboxx-1,iboxy+1,iboxz  ).or.&
+             hasfixed(iboxx-1,iboxy,  iboxz+1).or.&
+             hasfixed(iboxx-1,iboxy-1,iboxz  ).or.&
+             hasfixed(iboxx-1,iboxy,  iboxz-1).or.&
              hasfixed(iboxx+1,iboxy+1,iboxz+1).or.&
              hasfixed(iboxx+1,iboxy+1,iboxz-1).or.&
              hasfixed(iboxx+1,iboxy-1,iboxz+1).or.&
-             hasfixed(iboxx+1,iboxy-1,iboxz-1)) then
+             hasfixed(iboxx+1,iboxy-1,iboxz-1).or.&
+             hasfixed(iboxx-1,iboxy+1,iboxz+1).or.&
+             hasfixed(iboxx-1,iboxy+1,iboxz-1).or.&
+             hasfixed(iboxx-1,iboxy-1,iboxz+1).or.&
+             hasfixed(iboxx-1,iboxy-1,iboxz-1)) then
             overlap = .true.
           else
             overlap = .false.
