@@ -14,7 +14,7 @@ module compute_data
   use sizes
 
   integer :: ntotmol, ntype, natfix, ntotat
-  integer :: nboxes(3)  
+  integer :: nboxes(3), nb2(3)
 
   integer, allocatable :: nmols(:) ! (ntype)
   integer, allocatable :: natoms(:) ! (ntype)
@@ -50,6 +50,11 @@ module compute_data
   integer, allocatable :: latomnext(:) ! (ntotat)
   integer, allocatable :: latomfirst(:,:,:) !  (0:nbp+1,0:nbp+1,0:nbp+1)
   integer, allocatable :: latomfix(:,:,:) ! (0:nbp+1,0:nbp+1,0:nbp+1)
+
+  ! For boxes with atoms linked lists
+  integer :: lboxfirst
+  integer, allocatable :: lboxnext(:) ! ((nbp+2)**3)
+  logical, allocatable :: hasfree(:,:,:) ! (0:nbp+1,0:nbp+1,0:nbp+1) 
 
   ! For movebad
   double precision, allocatable :: fmol(:), radiuswork(:) ! (ntotat)

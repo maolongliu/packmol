@@ -26,7 +26,7 @@ subroutine gparc(icart,firstjcart)
   double precision :: a1,a2,a3,datom,dtemp,xdiff,tol
 
   jcart = firstjcart
-  do while ( jcart .ne. 0 )
+  do while ( jcart > 0 )
     if(comptype(ibtype(jcart))) then
       if(ibmol(icart).ne.ibmol(jcart).or. &
         ibtype(icart).ne.ibtype(jcart)) then

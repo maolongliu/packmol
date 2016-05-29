@@ -235,10 +235,6 @@ subroutine setsizes()
 
   nn = ntotmol*6
 
-  ! The number of bins of the linked cell method in each direction
-
-  nbp = int((fbins*dble(ntotat))**(1.d0/3.d0)) + 1
-
   ! Checking the total number of restrictions defined
 
   i = 0
@@ -255,7 +251,7 @@ subroutine setsizes()
   maxrest = i
   mrperatom = i
 
-  ! Allocate arrays depending on ntotat, nn, nbp, maxrest and mrperatom
+  ! Allocate arrays depending on ntotat, nn, maxrest, and mrperatom
 
   allocate(nratom(ntotat),iratom(ntotat,mrperatom),ibmol(ntotat),&
            ibtype(ntotat),xcart(ntotat,3),coor(ntotat,3),&
@@ -264,8 +260,6 @@ subroutine setsizes()
            fatom(ntotat),latomnext(ntotat),&
            fmol(ntotat),radiuswork(ntotat))
   allocate(ityperest(maxrest),restpars(maxrest,9))
-  allocate(latomfirst(0:nbp+1,0:nbp+1,0:nbp+1),&
-           latomfix(0:nbp+1,0:nbp+1,0:nbp+1))
   allocate(xmol(nn))
 
   ! Allocate other arrays used for input and output data

@@ -20,7 +20,7 @@ subroutine computef(n,x,f)
 
   integer :: n, i, j, k
   integer :: ilugan, ilubar, icart, itype, imol, iatom, idatom, &
-             iboxx, iboxy, iboxz 
+             iboxx, iboxy, iboxz, ibox
 
   double precision :: v1(3), v2(3), v3(3) 
   double precision :: x(n)
@@ -46,79 +46,90 @@ subroutine computef(n,x,f)
   ilubar = 0 
   ilugan = ntotmol*3 
   icart = natfix
-
+  ibox = 0
   do itype = 1, ntype 
     if(.not.comptype(itype)) then
       icart = icart + nmols(itype)*natoms(itype)
     else
-    do imol = 1, nmols(itype) 
+      do imol = 1, nmols(itype) 
 
-      xbar = x(ilubar+1) 
-      ybar = x(ilubar+2) 
-      zbar = x(ilubar+3) 
+        xbar = x(ilubar+1) 
+        ybar = x(ilubar+2) 
+        zbar = x(ilubar+3) 
   
-      ! Computing the rotation matrix
+        ! Computing the rotation matrix
 
-      beta = x(ilugan+1)
-      gama = x(ilugan+2)
-      teta = x(ilugan+3)
+        beta = x(ilugan+1)
+        gama = x(ilugan+2)
+        teta = x(ilugan+3)
 
-      call eulerrmat(beta,gama,teta,v1,v2,v3)  
+        call eulerrmat(beta,gama,teta,v1,v2,v3)  
 
-      ! Looping over the atoms of this molecule
+        ! Looping over the atoms of this molecule
   
-      idatom = idfirst(itype) - 1
-      do iatom = 1, natoms(itype) 
+        idatom = idfirst(itype) - 1
+        do iatom = 1, natoms(itype) 
+          icart = icart + 1
+          idatom = idatom + 1
 
-        icart = icart + 1
-        idatom = idatom + 1
+          ! Computing the cartesian coordinates for this atom
 
-        ! Computing the cartesian coordinates for this atom
+          call compcart(icart,xbar,ybar,zbar, &
+                        coor(idatom,1),coor(idatom,2),coor(idatom,3), &
+                        v1,v2,v3)
+          ! Adding to f the value relative to constraints for this atom
 
-        call compcart(icart,xbar,ybar,zbar, &
-                      coor(idatom,1),coor(idatom,2),coor(idatom,3), &
-                      v1,v2,v3)
 
-        ! Adding to f the value relative to constraints for this atom
+          call comprest(icart,fplus)
 
-        call comprest(icart,fplus)
-        f = f + fplus
-        frest = dmax1(frest,fplus)
-        if(move) fatom(icart) = fatom(icart) + fplus
+          f = f + fplus
+          frest = dmax1(frest,fplus)
+          if(move) fatom(icart) = fatom(icart) + fplus
 
-        ! Putting atoms in their boxes
+          ! Putting atoms in their boxes
 
-        if(.not.init1) then
+          if(.not.init1) then
 
-          xtemp = xcart(icart,1) - sizemin(1) 
-          ytemp = xcart(icart,2) - sizemin(2) 
-          ztemp = xcart(icart,3) - sizemin(3) 
+            xtemp = xcart(icart,1) - sizemin(1) 
+            ytemp = xcart(icart,2) - sizemin(2) 
+            ztemp = xcart(icart,3) - sizemin(3) 
 
-          iboxx = int(xtemp/boxl(1)) + 1
-          iboxy = int(ytemp/boxl(2)) + 1
-          iboxz = int(ztemp/boxl(3)) + 1
+            iboxx = int(xtemp/boxl(1)) + 1
+            iboxy = int(ytemp/boxl(2)) + 1
+            iboxz = int(ztemp/boxl(3)) + 1
 
-          if(xtemp.le.0) iboxx = 1
-          if(ytemp.le.0) iboxy = 1
-          if(ztemp.le.0) iboxz = 1 
-          if(iboxx.gt.nboxes(1)) iboxx = nboxes(1)
-          if(iboxy.gt.nboxes(2)) iboxy = nboxes(2)
-          if(iboxz.gt.nboxes(3)) iboxz = nboxes(3)
+            if(xtemp.le.0) iboxx = 1
+            if(ytemp.le.0) iboxy = 1
+            if(ztemp.le.0) iboxz = 1 
+            if(iboxx.gt.nboxes(1)) iboxx = nboxes(1)
+            if(iboxy.gt.nboxes(2)) iboxy = nboxes(2)
+            if(iboxz.gt.nboxes(3)) iboxz = nboxes(3)
 
-          latomnext(icart) = latomfirst(iboxx,iboxy,iboxz)
-          latomfirst(iboxx,iboxy,iboxz) = icart
+            ! Atom linked list
 
-          ibtype(icart) = itype
-          ibmol(icart) = imol
+            latomnext(icart) = latomfirst(iboxx,iboxy,iboxz)
+            latomfirst(iboxx,iboxy,iboxz) = icart
+            ! Boxes-with-atoms linked list
 
-        end if
+            if ( .not. hasfree(iboxx,iboxy,iboxz) ) then
+              hasfree(iboxx,iboxy,iboxz) = .true.
+              call ijk_to_ibox(iboxx,iboxy,iboxz,ibox)
+              lboxnext(ibox) = lboxfirst
+              lboxfirst = ibox
+            end if
 
-      end do 
+
+            ibtype(icart) = itype
+            ibmol(icart) = imol
+
+          end if
+
+        end do 
  
-      ilugan = ilugan + 3 
-      ilubar = ilubar + 3 
+        ilugan = ilugan + 3 
+        ilubar = ilubar + 3 
 
-    end do
+      end do
     end if
   end do            
 
@@ -126,58 +137,59 @@ subroutine computef(n,x,f)
 
   ! Minimum distance function evaluation
 
-  do i = 1, nboxes(1)
-    do j = 1, nboxes(2)
-      do k = 1, nboxes(3)
+  ibox = lboxfirst
+  do while( ibox > 0 ) 
 
-        icart = latomfirst(i,j,k)
-        do while ( icart .ne. 0 ) 
+    call ibox_to_ijk(ibox,i,j,k)
 
-          if(comptype(ibtype(icart))) then
+    icart = latomfirst(i,j,k)
+    do while( icart > 0 ) 
 
-            ! Vector that keeps the value for this atom
+      if(comptype(ibtype(icart))) then
 
-            if(move) flast = f 
+        ! Vector that keeps the value for this atom
 
-            ! Interactions inside box
+        if(move) flast = f 
 
-            f = f + fparc(icart,latomnext(icart))
+        ! Interactions inside box
 
-            ! Interactions of boxes that share faces
+        f = f + fparc(icart,latomnext(icart))
 
-            f = f + fparc(icart,latomfirst(i+1,j,k))
-            f = f + fparc(icart,latomfirst(i,j+1,k))
-            f = f + fparc(icart,latomfirst(i,j,k+1))
+        ! Interactions of boxes that share faces
 
-            ! Interactions of boxes that share axes
+        f = f + fparc(icart,latomfirst(i+1,j,k))
+        f = f + fparc(icart,latomfirst(i,j+1,k))
+        f = f + fparc(icart,latomfirst(i,j,k+1))
 
-            f = f + fparc(icart,latomfirst(i+1,j+1,k))
-            f = f + fparc(icart,latomfirst(i+1,j,k+1))
-            f = f + fparc(icart,latomfirst(i+1,j-1,k))
-            f = f + fparc(icart,latomfirst(i+1,j,k-1))
-            f = f + fparc(icart,latomfirst(i,j+1,k+1))
-            f = f + fparc(icart,latomfirst(i,j+1,k-1))
+        ! Interactions of boxes that share axes
 
-            ! Interactions of boxes that share vertices
+        f = f + fparc(icart,latomfirst(i+1,j+1,k))
+        f = f + fparc(icart,latomfirst(i+1,j,k+1))
+        f = f + fparc(icart,latomfirst(i+1,j-1,k))
+        f = f + fparc(icart,latomfirst(i+1,j,k-1))
+        f = f + fparc(icart,latomfirst(i,j+1,k+1))
+        f = f + fparc(icart,latomfirst(i,j+1,k-1))
 
-            f = f + fparc(icart,latomfirst(i+1,j+1,k+1))
-            f = f + fparc(icart,latomfirst(i+1,j+1,k-1))
-            f = f + fparc(icart,latomfirst(i+1,j-1,k+1))
-            f = f + fparc(icart,latomfirst(i+1,j-1,k-1))
+        ! Interactions of boxes that share vertices
 
-            ! If going to move bad molecules, update fatom
+        f = f + fparc(icart,latomfirst(i+1,j+1,k+1))
+        f = f + fparc(icart,latomfirst(i+1,j+1,k-1))
+        f = f + fparc(icart,latomfirst(i+1,j-1,k+1))
+        f = f + fparc(icart,latomfirst(i+1,j-1,k-1))
 
-            if(move) fatom(icart) = fatom(icart) + f - flast
+        ! If going to move bad molecules, update fatom
 
-          end if
+        if(move) fatom(icart) = fatom(icart) + f - flast
 
-          icart = latomnext(icart)
-        end do
-  
-      end do
+      end if
+
+      icart = latomnext(icart)
     end do
+
+    ibox = lboxnext(ibox)
   end do
 
   return
 end subroutine computef
+
 

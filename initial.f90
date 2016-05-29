@@ -24,7 +24,7 @@ subroutine initial(n,x)
   use ahestetic
   implicit none
   integer :: n, i, j, k, idatom, iatom, ilubar, ilugan, icart, itype, &
-             imol, ntry, nb, iboxx, iboxy, iboxz, ifatom, &
+             imol, ntry, iboxx, iboxy, iboxz, ifatom, &
              idfatom, iftype, jatom, ioerr, i_not_fixed
 
   double precision :: x(n), cmx, cmy, beta, gamma, theta, &
@@ -36,10 +36,6 @@ subroutine initial(n,x)
   logical, allocatable :: hasfixed(:,:,:)
 
   character(len=200) :: record
-
-  ! Allocate hasfixed and hasfree arrays
-
-  allocate(hasfixed(0:nbp+1,0:nbp+1,0:nbp+1))
 
   ! We need to initialize the move logical variable
 
@@ -187,21 +183,6 @@ subroutine initial(n,x)
     radmax = dmax1(radmax,2.d0*radius(i))
   end do
 
-  ! Compare analytical and finite-difference gradients
-
-  if(chkgrad) then
-    dbox = discale * radmax + 0.01d0 * radmax
-    do i = 1, 3
-      xlength = sizemax(i) - sizemin(i)
-      nb = int(xlength/dbox + 1.d0)  
-      if(nb.gt.nbp) nb = nbp
-      boxl(i) = dmax1(xlength/dfloat(nb),dbox)
-      nboxes(i) = nb
-    end do
-    call comparegrad(n,x)
-    stop
-  end if
-
   ! Performing some steps of optimization for the restrictions only
   
   write(*,hash3_line)
@@ -287,18 +268,34 @@ subroutine initial(n,x)
   dbox = discale * radmax + 0.01d0 * radmax 
   do i = 1, 3
     xlength = sizemax(i) - sizemin(i)
-    nb = int(xlength/dbox + 1.d0)  
-    if(nb.gt.nbp) nb = nbp
-    boxl(i) = dmax1(xlength/dfloat(nb),dbox)
-    nboxes(i) = nb
+    nbp = int(xlength/dbox + 1.d0)  
+    boxl(i) = dmax1(xlength/dfloat(nbp),dbox)
+    nboxes(i) = nbp
+    nb2(i) = nboxes(i) + 2
   end do
 
-  ! Reseting latomfix, hasfixed, and hasfree arrays
+  ! Allocate arrays depending on nbp parameter
+
+  allocate(latomfirst(0:nbp+1,0:nbp+1,0:nbp+1),&
+           latomfix(0:nbp+1,0:nbp+1,0:nbp+1),&
+           hasfree(0:nbp+1,0:nbp+1,0:nbp+1),&
+           lboxnext((nbp+2)**3),&
+           hasfixed(0:nbp+1,0:nbp+1,0:nbp+1))
+ 
+  ! Compare analytical and finite-difference gradients
+
+  if(chkgrad) then
+    call comparegrad(n,x)
+    stop
+  end if
+
+  ! Reseting latomfix, latomfirst, hasfixed, and hasfree arrays
 
   do i = 0, nbp + 1
     do j = 0, nbp + 1
       do k = 0, nbp + 1
         latomfix(i,j,k) = 0
+        latomfirst(i,j,k) = 0
         hasfixed(i,j,k) = .false.
         hasfree(i,j,k) = .false.
       end do
@@ -559,54 +556,6 @@ subroutine initial(n,x)
 
   return
 end subroutine initial
-
-!
-! Subroutine resetboxes
-!
-
-subroutine resetboxes()
-      
-  use sizes
-  use compute_data, only : nboxes, latomfirst, latomfix
-  implicit none
-
-  integer :: i,j,k
-
-  ! Reset boxes
-
-  do i = 1, nboxes(1)
-    do j = 1, nboxes(2)
-      do k = 1, nboxes(3)
-        latomfirst(i,j,k) = latomfix(i,j,k)
-      end do
-    end do
-  end do
-
-  ! Reset margins
-      
-  do j = 0, nboxes(2)+1
-    do k = 0, nboxes(3)+1
-      latomfirst(0,j,k) = 0
-      latomfirst(nboxes(1)+1,j,k) = 0
-    end do
-  end do
-
-  do i = 0, nboxes(1)+1
-    do k = 0, nboxes(3)+1
-      latomfirst(i,0,k) = 0
-      latomfirst(i,nboxes(2)+1,k) = 0
-    end do
-  end do
-
-  do i = 0, nboxes(1)+1
-    do j = 0, nboxes(2)+1
-      latomfirst(i,j,0) = 0
-      latomfirst(i,j,nboxes(3)+1) = 0
-    end do
-  end do      
-
-  return
-end subroutine resetboxes
 
 !
 ! subroutine tobar: moves molecules to their baricentres

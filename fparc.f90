@@ -27,7 +27,7 @@ double precision function fparc(icart,firstjcart)
 
   fparc = 0.0d0
   jcart = firstjcart
-  do while ( jcart .ne. 0 )
+  do while ( jcart > 0 )
     if(comptype(ibtype(jcart))) then
       if(ibmol(icart).ne.ibmol(jcart).or. &
          ibtype(icart).ne.ibtype(jcart)) then

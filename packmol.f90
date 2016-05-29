@@ -81,6 +81,8 @@ program packmol
 
   logical, allocatable :: fixed(:) ! ntype
 
+integer :: j, k ! voltar
+
   ! Printing title
 
   call title()
